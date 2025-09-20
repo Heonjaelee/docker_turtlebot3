@@ -5,11 +5,11 @@ Jetpack 6.2.1
 L4T 36.4.4
 ROS2 Humble
 
-#build \n
+#build 
 docker build -t rostest -f ./Dockerfile_turtlebot .
 
-#run \n
+#run 
 docker run -it --rm --privileged --net=host rostest
 
-#in container \n
+#in container 
 ./update.sh $OPENCR_PORT $OPENCR_MODEL.opencr
