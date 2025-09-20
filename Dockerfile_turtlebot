@@ -1,0 +1,55 @@
+# 1. 베이스 이미지
+FROM dustynv/l4t-pytorch:r36.4.0
+FROM ros:humble
+
+# 2. 기본 설정
+SHELL ["/bin/bash", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt update && apt install locales && \
+    locale-gen en_US en_US.UTF-8 && \
+    update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 && \
+    export LANG=en_US.UTF-8 && \
+    apt install -y software-properties-common && \
+    add-apt-repository universe && \
+    apt update && apt install curl -y && \
+    apt update && apt upgrade -y && \
+    apt install -y ros-humble-desktop-full && \
+    apt install -y ros-humble-ros-base && \
+    apt install -y ros-dev-tools 
+
+RUN apt install -y python3-argcomplete python3-colcon-common-extensions libboost-system-dev build-essential && \
+    apt install -y ros-humble-hls-lfcd-lds-driver && \
+    apt install -y ros-humble-turtlebot3-msgs && \
+    apt install -y ros-humble-dynamixel-sdk && \
+    apt install -y libudev-dev
+
+RUN mkdir -p /turtlebot3_ws/src
+WORKDIR /turtlebot3_ws/src
+RUN git clone -b humble https://github.com/ROBOTIS-GIT/turtlebot3.git && \
+    git clone -b humble https://github.com/ROBOTIS-GIT/ld08_driver.git 
+
+WORKDIR /turtlebot3_ws
+RUN source /opt/ros/humble/setup.bash && \
+    colcon build --symlink-install --parallel-workers 1 && \
+    source /turtlebot3_ws/install/setup.bash && \
+    cp `ros2 pkg prefix turtlebot3_bringup`/share/turtlebot3_bringup/script/99-turtlebot3-cdc.rules /etc/udev/rules.d/
+
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
+    echo "source /turtlebot3_ws/install/setup.bash" >> ~/.bashrc
+
+ENV ROS_DOMAIN_ID=30
+ENV LDS_MODEL=LDS-02
+ENV OPENCR_PORT=/dev/ttyACM0
+ENV OPENCR_MODEL=waffle
+
+RUN dpkg --add-architecture armhf && \
+    apt-get update && \
+    apt-get install -y libc6:armhf && \
+    rm -rf ./opencr_update.tar.bz2 && \
+    wget https://github.com/ROBOTIS-GIT/OpenCR-Binaries/raw/master/turtlebot3/ROS2/latest/opencr_update.tar.bz2 && \
+    tar -xvf opencr_update.tar.bz2 && \
+    rm -rf /var/lib/apt/lists/*
+    
+WORKDIR /turtlebot3_ws/opencr_update
+RUN ./update.sh $OPENCR_PORT $OPENCR_MODEL.opencr
